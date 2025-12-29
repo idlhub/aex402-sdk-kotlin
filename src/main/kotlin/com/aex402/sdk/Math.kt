@@ -38,11 +38,17 @@ private val PRECISION = BigInteger.TEN.pow(18)
  * @return Invariant D, or null if failed to converge
  */
 fun calcD(x: BigInteger, y: BigInteger, amp: BigInteger): BigInteger? {
+    // Guard against division by zero
+    if (x == BigInteger.ZERO || y == BigInteger.ZERO) return BigInteger.ZERO
+
     val s = x + y
     if (s == BigInteger.ZERO) return BigInteger.ZERO
 
     var d = s
     val ann = amp * FOUR // A * n^n where n=2
+
+    // Guard against zero amp
+    if (ann == BigInteger.ZERO) return null
 
     for (i in 0 until NEWTON_ITERATIONS) {
         // d_p = d^3 / (4 * x * y)
@@ -54,6 +60,7 @@ fun calcD(x: BigInteger, y: BigInteger, amp: BigInteger): BigInteger? {
         // d = (ann * s + d_p * 2) * d / ((ann - 1) * d + 3 * d_p)
         val num = (ann * s + dP * TWO) * d
         val denom = (ann - ONE) * d + dP * THREE
+        if (denom == BigInteger.ZERO) return null
         d = num / denom
 
         // Check convergence
@@ -76,15 +83,22 @@ fun calcD(x: BigInteger, y: BigInteger, amp: BigInteger): BigInteger? {
  */
 fun calcDN(balances: List<BigInteger>, amp: BigInteger): BigInteger? {
     val n = balances.size
+    if (n < 2) return null
+
     val nBig = BigInteger.valueOf(n.toLong())
     var s = BigInteger.ZERO
     for (b in balances) {
+        // Guard against zero balance (would cause division by zero)
+        if (b == BigInteger.ZERO) return BigInteger.ZERO
         s += b
     }
     if (s == BigInteger.ZERO) return BigInteger.ZERO
 
     var d = s
     val ann = amp * nBig.pow(n) // A * n^n
+
+    // Guard against zero amp
+    if (ann == BigInteger.ZERO) return null
 
     for (i in 0 until NEWTON_ITERATIONS) {
         // d_p = d^(n+1) / (n^n * prod(x_i))
@@ -98,6 +112,7 @@ fun calcDN(balances: List<BigInteger>, amp: BigInteger): BigInteger? {
         // d = (ann * s + d_p * n) * d / ((ann - 1) * d + (n + 1) * d_p)
         val num = (ann * s + dP * nBig) * d
         val denom = (ann - ONE) * d + dP * BigInteger.valueOf((n + 1).toLong())
+        if (denom == BigInteger.ZERO) return null
         d = num / denom
 
         if (d > dPrev) {
@@ -123,7 +138,13 @@ fun calcDN(balances: List<BigInteger>, amp: BigInteger): BigInteger? {
  * @return Output token balance Y, or null if failed to converge
  */
 fun calcY(xNew: BigInteger, d: BigInteger, amp: BigInteger): BigInteger? {
+    // Guard against division by zero
+    if (xNew == BigInteger.ZERO) return null
+
     val ann = amp * FOUR
+
+    // Guard against zero amp
+    if (ann == BigInteger.ZERO) return null
 
     // c = d^3 / (4 * x_new * ann)
     var c = d * d / (xNew * TWO)
@@ -140,6 +161,7 @@ fun calcY(xNew: BigInteger, d: BigInteger, amp: BigInteger): BigInteger? {
         // y = (y^2 + c) / (2y + b - d)
         val num = y * y + c
         val denom = y * TWO + b - d
+        if (denom == BigInteger.ZERO) return null
         y = num / denom
 
         if (y > yPrev) {
